@@ -3,13 +3,13 @@
 <mapper namespace="com.example.asset.mapper.BudgetMapper">
 
     <select id="selectBudgetByMonth" resultType="com.example.asset.dto.BudgetDto">
-        SELECT id, year_month AS yearMonth, amount
+        SELECT id, `year_month` AS yearMonth, amount
         FROM budgets
-        WHERE year_month = #{yearMonth}
+        WHERE `year_month` = #{yearMonth}
     </select>
 
     <insert id="upsertBudget">
-        INSERT INTO budgets (year_month, amount)
+        INSERT INTO budgets (`year_month`, amount)
         VALUES (#{yearMonth}, #{amount})
         ON DUPLICATE KEY UPDATE amount = #{amount}
     </insert>

@@ -1,0 +1,44 @@
+# Dependencies (node_modules 제외)
+/node_modules
+/.pnp
+.pnp.js
+
+# Production / Build Output (빌드 결과물 제외)
+/dist
+/build
+/out
+
+# Testing & Coverage
+/coverage
+
+# Logs (에러 및 패키지 로그 제외)
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment Variables (환경변수 및 보안 키 파일 제외)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE & Editor Files (개인 에디터 설정 제외)
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS / System Files (운영체제 생성 파일 제외)
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
