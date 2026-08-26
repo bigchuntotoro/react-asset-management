@@ -73,25 +73,22 @@ stage('Stop Existing Server') {
 stage('Deploy') {
             steps {
                 sh '''
-                    # 1. 서비스 Target 폴더 생성 (없을 경우)
-                    mkdir -p ${TARGET_DIR}
-
-                    # 2. 빌드된 원본 JAR 파일 절대경로 탐색
+                    # 1. 빌드된 원본 JAR 파일 절대경로 탐색
                     BUILD_JAR=$(find /var/lib/jenkins/workspace/react-asset-management/build/libs -name "*.jar" ! -name "*-plain.jar" | head -n 1)
                     echo "빌드 완료된 JAR: $BUILD_JAR"
 
-                    # 3. Target 폴더로 복사 및 표준파일명으로 지정
+                    # 2. Target 폴더로 복사 및 표준파일명으로 지정
                     TARGET_JAR="${TARGET_DIR}/${APP_NAME}.jar"
                     cp -f "$BUILD_JAR" "$TARGET_JAR"
                     echo "서비스 폴더로 이동/복사 완료: $TARGET_JAR"
 
-                    # 4. 서비스 폴더 위치에서 백그라운드 구동
+                    # 3. 서비스 폴더 위치에서 백그라운드 구동
                     cd ${TARGET_DIR}
                     nohup java -jar "${APP_NAME}.jar" \
                         --spring.profiles.active=prod \
                         > springboot.log 2>&1 &
 
-                    # 5. PID 생성
+                    # 4. PID 생성
                     echo $! > app.pid
                     echo "신규 프로세스 시작 (PID: $(cat app.pid))"
                 '''
