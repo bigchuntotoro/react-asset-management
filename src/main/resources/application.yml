@@ -7,12 +7,6 @@ spring:
     url: jdbc:mariadb://localhost:3306/reactdb?useSSL=false&characterEncoding=UTF-8
     username: totoro
     password: totoro
-  # JPA / Hibernate SQL 출력 활성화
-  jpa:
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true # SQL 구문을 정돈해서 보기 쉽게 출력
 
 mybatis:
   mapper-locations: classpath:mapper/*.xml
@@ -20,8 +14,10 @@ mybatis:
   configuration:
     map-underscore-to-camel-case: true
 
-# SQL 바인딩 파라미터(?) 값 로그 출력 레벨 설정
 logging:
   level:
-    org.hibernate.SQL: debug              # 실행되는 SQL문 출력
-    org.hibernate.type.descriptor.sql: trace # SQL에 바인딩되는 실제 값(?) 출력
+    # Root 로그 레벨
+    root: info
+    # Mapper 인터페이스 또는 XML 매퍼가 위치한 패키지 경로 지정 (중요)
+    # 아래 경로를 실제 Mapper/DAO 파일이 위치한 패키지명으로 변경해 주세요.
+    com.example.asset.mapper: debug
