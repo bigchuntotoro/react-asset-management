@@ -68,6 +68,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 sh '''
+                    echo "현재 절대경로: $(pwd)"
                     JAR_FILE=$(find build/libs -name "*.jar" ! -name "*-plain.jar" | head -n 1)
 
                     echo "Deploying: $JAR_FILE"
