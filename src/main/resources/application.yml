@@ -4,8 +4,8 @@ server:
 spring:
   datasource:
     driver-class-name: org.mariadb.jdbc.Driver
-    url: jdbc:mariadb://localhost:3306/board_db?useSSL=false&characterEncoding=UTF-8
-    username: root
+    url: jdbc:mariadb://localhost:3306/reactdb?useSSL=false&characterEncoding=UTF-8
+    username: totoro
     password: totoro
 
 mybatis:
