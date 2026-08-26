@@ -8,6 +8,9 @@ pipeline {
     environment {
         DB_HOST = 'localhost'
         DB_PORT = '3306'
+        DB_NAME = 'reactdb'
+        DB_USER = 'totoro'
+        DB_PASSWORD = credentials('mariadb-password')
     }
 
     stages {
