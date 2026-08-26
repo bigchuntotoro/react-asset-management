@@ -12,7 +12,7 @@ pipeline {
         DB_USER     = 'totoro'
         DB_PASSWORD = credentials('mariadb-password')
 
-        TARGET_DIR  = '/home/totoro/Reactproject/app'
+        TARGET_DIR  = '/home/totoro/Reactproject/react-asset-management-app'
         APP_NAME    = 'react-asset-management'
     }
 
