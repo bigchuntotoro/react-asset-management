@@ -3,6 +3,7 @@ pipeline {
 
     tools {
         jdk 'JDK21'
+        nodejs 'NodeJS24'   // Jenkins에 등록된 NodeJS 도구 이름으로 변경
     }
 
     environment {
@@ -12,8 +13,11 @@ pipeline {
         DB_USER     = 'totoro'
         DB_PASSWORD = credentials('mariadb-password')
 
-        TARGET_DIR  = '/home/totoro/Reactproject/react-asset-management-app'
-        APP_NAME    = 'react-asset-management'
+        TARGET_DIR   = '/home/totoro/Reactproject/react-asset-management-app'
+        APP_NAME     = 'react-asset-management'
+
+        FRONTEND_DIR = "${WORKSPACE}/src/main/frontend"
+        NGINX_ROOT   = '/usr/share/nginx/html/asset-management'   // Nginx가 서빙하는 실제 경로로 변경
     }
 
     stages {
@@ -35,7 +39,39 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Frontend Build (Vite)') {
+            steps {
+                dir("${FRONTEND_DIR}") {
+                    sh '''
+                        node -v
+                        npm -v
+                        npm ci
+                        npm run build
+                    '''
+                }
+            }
+        }
+
+        stage('Frontend Deploy (Nginx)') {
+            steps {
+                sh """
+                    if [ ! -d "${FRONTEND_DIR}/dist" ]; then
+                        echo "오류: Vite 빌드 산출물(dist)을 찾을 수 없습니다."
+                        exit 1
+                    fi
+
+                    sudo mkdir -p "${NGINX_ROOT}"
+                    sudo rm -rf "${NGINX_ROOT}"/*
+                    sudo cp -r "${FRONTEND_DIR}/dist"/* "${NGINX_ROOT}/"
+
+                    echo "Nginx 설정 검증 및 재적용"
+                    sudo nginx -t
+                    sudo systemctl reload nginx
+                """
+            }
+        }
+
+        stage('Backend Build') {
             steps {
                 sh '''
                     chmod +x gradlew
@@ -61,7 +97,6 @@ pipeline {
                             echo "기존 Spring Boot 서버 종료 중 (PID: \$PID)"
                             kill \$PID
                             sleep 5
-                            # 5초 후에도 종료되지 않으면 강제 종료
                             if kill -0 \$PID 2>/dev/null; then
                                 echo "강제 종료 진행 (PID: \$PID)"
                                 kill -9 \$PID
@@ -74,13 +109,11 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+        stage('Backend Deploy') {
             steps {
                 sh """
-                    # 1. Target 폴더 생성
                     mkdir -p "${TARGET_DIR}"
 
-                    # 2. 빌드된 원본 JAR 파일 탐색
                     BUILD_JAR=\$(find "${WORKSPACE}/build/libs" -name "*.jar" ! -name "*-plain.jar" | head -n 1)
                     echo "빌드 완료된 JAR: \$BUILD_JAR"
 
@@ -89,12 +122,10 @@ pipeline {
                         exit 1
                     fi
 
-                    # 3. Target 폴더로 복사
                     TARGET_JAR="${TARGET_DIR}/${APP_NAME}.jar"
                     cp -f "\$BUILD_JAR" "\$TARGET_JAR"
                     echo "서비스 폴더로 복사 완료: \$TARGET_JAR"
 
-                    # 4. Jenkins가 프로세스를 강제 종료하지 않도록 설정 후 실행
                     cd "${TARGET_DIR}"
                     JENKINS_NODE_COOKIE=dontKillMe nohup java -jar "${APP_NAME}.jar" \
                         --spring.profiles.active=prod \
@@ -103,7 +134,6 @@ pipeline {
                         --spring.datasource.password="${DB_PASSWORD}" \
                         > springboot.log 2>&1 &
 
-                    # 5. PID 기록
                     echo \$! > app.pid
                     echo "신규 프로세스 시작 완료 (PID: \$(cat app.pid))"
                 """
@@ -138,13 +168,11 @@ pipeline {
 
     post {
         success {
-            echo 'Spring Boot 빌드 및 배포 성공'
+            echo 'Frontend(Nginx) + Backend(Spring Boot) 빌드 및 배포 성공'
         }
-
         failure {
             echo '빌드 또는 배포 실패'
         }
-
         always {
             archiveArtifacts artifacts: 'build/libs/*.jar', fingerprint: true
         }
