@@ -61,7 +61,7 @@ const DashboardPage = () => {
     boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
   };
 
-  // 선택된 yearMonth(YYYY-MM) 기반으로 해당 월의 1일 날짜(YYYY-MM-01) 생성
+  // 선택된 yearMonth(YYYY-MM)를 기반으로 해당 월의 1일 날짜(YYYY-MM-01) 생성
   const defaultDate = `${yearMonth}-01`;
 
   return (
@@ -123,8 +123,9 @@ const DashboardPage = () => {
         >
           수입 / 지출 내역 관리
         </h3>
-        {/* defaultDate props 추가 전달 */}
+        {/* key={yearMonth}를 추가하여 조회월 변경 시 폼 내부 날짜 state 재초기화 */}
         <TransactionForm
+          key={yearMonth}
           defaultDate={defaultDate}
           onAddTransaction={handleAddTransaction}
         />
