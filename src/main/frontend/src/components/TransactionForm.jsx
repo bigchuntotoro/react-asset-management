@@ -1,13 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
-const TransactionForm = ({ onAddTransaction }) => {
+const TransactionForm = ({ defaultDate, onAddTransaction }) => {
   const [form, setForm] = useState({
     type: "EXPENSE",
     category: "식비",
     amount: "",
-    transactionDate: new Date().toISOString().split("T")[0],
+    transactionDate: defaultDate || new Date().toISOString().split("T")[0],
     memo: "",
   });
+
+  // 조회 월(defaultDate) 변경 시 transactionDate 상태 동기화
+  useEffect(() => {
+    if (defaultDate) {
+      setForm((prev) => ({
+        ...prev,
+        transactionDate: defaultDate,
+      }));
+    }
+  }, [defaultDate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
