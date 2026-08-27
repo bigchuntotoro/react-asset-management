@@ -3,7 +3,7 @@ pipeline {
 
     tools {
         jdk 'JDK21'
-        nodejs 'NodeJS24'   // Jenkins에 등록된 NodeJS 도구 이름으로 변경
+        nodejs 'NodeJS24'   // Jenkins에 등록된 NodeJS 도구 이름
     }
 
     environment {
@@ -11,13 +11,14 @@ pipeline {
         DB_PORT     = '3306'
         DB_NAME     = 'reactdb'
         DB_USER     = 'totoro'
+        // Jenkins Credentials (Text 타입)
         DB_PASSWORD = credentials('mariadb-password')
 
         TARGET_DIR   = '/home/totoro/Reactproject/react-asset-management-app'
         APP_NAME     = 'react-asset-management'
 
         FRONTEND_DIR = "${WORKSPACE}/src/main/frontend"
-        NGINX_ROOT   = '/usr/share/nginx/html/asset-management'   // Nginx가 서빙하는 실제 경로로 변경
+        NGINX_ROOT   = '/usr/share/nginx/html/asset-management'
     }
 
     stages {
@@ -111,32 +112,37 @@ pipeline {
 
         stage('Backend Deploy') {
             steps {
-                sh """
-                    mkdir -p "${TARGET_DIR}"
+                // 비밀번호 마스킹 및 보안 강화를 위해 withCredentials 사용
+                withCredentials([string(credentialsId: 'mariadb-password', variable: 'PASS')]) {
+                    sh """
+                        mkdir -p "${TARGET_DIR}"
 
-                    BUILD_JAR=\$(find "${WORKSPACE}/build/libs" -name "*.jar" ! -name "*-plain.jar" | head -n 1)
-                    echo "빌드 완료된 JAR: \$BUILD_JAR"
+                        BUILD_JAR=\$(find "${WORKSPACE}/build/libs" -name "*.jar" ! -name "*-plain.jar" | head -n 1)
+                        echo "빌드 완료된 JAR: \$BUILD_JAR"
 
-                    if [ -z "\$BUILD_JAR" ]; then
-                        echo "오류: JAR 파일을 찾을 수 없습니다."
-                        exit 1
-                    fi
+                        if [ -z "\$BUILD_JAR" ]; then
+                            echo "오류: JAR 파일을 찾을 수 없습니다."
+                            exit 1
+                        fi
 
-                    TARGET_JAR="${TARGET_DIR}/${APP_NAME}.jar"
-                    cp -f "\$BUILD_JAR" "\$TARGET_JAR"
-                    echo "서비스 폴더로 복사 완료: \$TARGET_JAR"
+                        TARGET_JAR="${TARGET_DIR}/${APP_NAME}.jar"
+                        cp -f "\$BUILD_JAR" "\$TARGET_JAR"
+                        echo "서비스 폴더로 복사 완료: \$TARGET_JAR"
 
-                    cd "${TARGET_DIR}"
-                    JENKINS_NODE_COOKIE=dontKillMe nohup java -jar "${APP_NAME}.jar" \
-                        --spring.profiles.active=prod \
-                        --spring.datasource.url="jdbc:mariadb://${DB_HOST}:${DB_PORT}/${DB_NAME}?useSSL=false&serverTimezone=UTC" \
-                        --spring.datasource.username="${DB_USER}" \
-                        --spring.datasource.password="${DB_PASSWORD}" \
-                        > springboot.log 2>&1 &
+                        cd "${TARGET_DIR}"
 
-                    echo \$! > app.pid
-                    echo "신규 프로세스 시작 완료 (PID: \$(cat app.pid))"
-                """
+                        # 1. 커맨드라인 인자(--spring.datasource...) 대신 셸 환경변수(SPRING_DATASOURCE_...)로 주입
+                        # 2. ps aux 출력 시 비밀번호 노출 차단
+                        SPRING_DATASOURCE_URL="jdbc:mariadb://${DB_HOST}:${DB_PORT}/${DB_NAME}?useSSL=false&serverTimezone=UTC" \
+                        SPRING_DATASOURCE_USERNAME="${DB_USER}" \
+                        SPRING_DATASOURCE_PASSWORD='${PASS}' \
+                        JENKINS_NODE_COOKIE=dontKillMe \
+                        nohup java -jar "${APP_NAME}.jar" --spring.profiles.active=prod > springboot.log 2>&1 &
+
+                        echo \$! > app.pid
+                        echo "신규 프로세스 시작 완료 (PID: \$(cat app.pid))"
+                    """
+                }
             }
         }
 
