@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    triggers {
+        // 5분마다 Git 변경사항 주기적 감지
+        pollSCM('H/5 * * * *')
+    }
+
     tools {
         nodejs 'NodeJS24'
     }
@@ -19,6 +24,10 @@ pipeline {
         }
 
         stage('Frontend Build (Vite)') {
+            // src/main/frontend/ 하위 파일 변경 시에만 이 Stage 실행
+            when {
+                changeset "src/main/frontend/**"
+            }
             steps {
                 dir("${FRONTEND_DIR}") {
                     sh '''
@@ -32,6 +41,10 @@ pipeline {
         }
 
         stage('Frontend Deploy (Nginx)') {
+            // 빌드 조건과 동일하게 프론트엔드 변경 시에만 배포 수행
+            when {
+                changeset "src/main/frontend/**"
+            }
             steps {
                 sh """
                     if [ ! -d "${FRONTEND_DIR}/dist" ]; then
