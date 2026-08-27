@@ -121,7 +121,7 @@ const DashboardPage = () => {
         <h3
           style={{ fontSize: "16px", fontWeight: "600", marginBottom: "16px" }}
         >
-          수입 / 지출 내역 관리
+          수입 / 지출 내역 관리aaaa
         </h3>
         {/* key={yearMonth}를 추가하여 조회월 변경 시 폼 내부 날짜 state 재초기화 */}
         <TransactionForm
