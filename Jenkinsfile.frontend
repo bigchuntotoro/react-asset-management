@@ -1,0 +1,65 @@
+pipeline {
+    agent any
+
+    tools {
+        nodejs 'NodeJS24'
+    }
+
+    environment {
+        FRONTEND_DIR = "${WORKSPACE}/src/main/frontend"
+        NGINX_ROOT   = '/usr/share/nginx/html/asset-management'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '프론트엔드 소스 다운로드'
+                checkout scm
+            }
+        }
+
+        stage('Frontend Build (Vite)') {
+            steps {
+                dir("${FRONTEND_DIR}") {
+                    sh '''
+                        node -v
+                        npm -v
+                        npm ci
+                        npm run build
+                    '''
+                }
+            }
+        }
+
+        stage('Frontend Deploy (Nginx)') {
+            steps {
+                sh """
+                    if [ ! -d "${FRONTEND_DIR}/dist" ]; then
+                        echo "오류: Vite 빌드 산출물(dist)을 찾을 수 없습니다."
+                        exit 1
+                    fi
+
+                    sudo mkdir -p "${NGINX_ROOT}"
+                    sudo rm -rf "${NGINX_ROOT}"/*
+                    sudo cp -r "${FRONTEND_DIR}/dist"/* "${NGINX_ROOT}/"
+
+                    echo "Nginx 설정 검증 및 재적용"
+                    sudo nginx -t
+                    sudo systemctl reload nginx
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Frontend(Nginx) 빌드 및 배포 성공'
+        }
+        failure {
+            echo 'Frontend 빌드 또는 배포 실패'
+        }
+        always {
+            cleanWs()
+        }
+    }
+}
