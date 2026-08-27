@@ -61,6 +61,9 @@ const DashboardPage = () => {
     boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
   };
 
+  // 선택된 yearMonth(YYYY-MM) 기반으로 해당 월의 1일 날짜(YYYY-MM-01) 생성
+  const defaultDate = `${yearMonth}-01`;
+
   return (
     <div style={{ maxWidth: "880px", margin: "40px auto", padding: "0 20px" }}>
       {/* 상단 헤더 & 조회 연월 */}
@@ -120,7 +123,11 @@ const DashboardPage = () => {
         >
           수입 / 지출 내역 관리
         </h3>
-        <TransactionForm onAddTransaction={handleAddTransaction} />
+        {/* defaultDate props 추가 전달 */}
+        <TransactionForm
+          defaultDate={defaultDate}
+          onAddTransaction={handleAddTransaction}
+        />
         <TransactionList
           transactions={transactions}
           onDeleteTransaction={handleDeleteTransaction}
