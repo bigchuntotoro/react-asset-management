@@ -19,6 +19,8 @@ pipeline {
 
         FRONTEND_DIR = "${WORKSPACE}/src/main/frontend"
         NGINX_ROOT   = '/usr/share/nginx/html/asset-management'
+
+        PATH         = "/usr/local/bin:/usr/bin:/bin:${env.PATH}"
     }
 
     stages {
@@ -89,30 +91,8 @@ pipeline {
             }
         }
 
-        stage('Stop Existing Server') {
+        stage('Backend Deploy & Start with PM2') {
             steps {
-                sh """
-                    if [ -f "${TARGET_DIR}/app.pid" ]; then
-                        PID=\$(cat "${TARGET_DIR}/app.pid")
-                        if kill -0 \$PID 2>/dev/null; then
-                            echo "기존 Spring Boot 서버 종료 중 (PID: \$PID)"
-                            kill \$PID
-                            sleep 5
-                            if kill -0 \$PID 2>/dev/null; then
-                                echo "강제 종료 진행 (PID: \$PID)"
-                                kill -9 \$PID
-                                sleep 2
-                            fi
-                        fi
-                        rm -f "${TARGET_DIR}/app.pid"
-                    fi
-                """
-            }
-        }
-
-        stage('Backend Deploy') {
-            steps {
-                // 비밀번호 마스킹 및 보안 강화를 위해 withCredentials 사용
                 withCredentials([string(credentialsId: 'mariadb-password', variable: 'PASS')]) {
                     sh """
                         mkdir -p "${TARGET_DIR}"
@@ -131,16 +111,21 @@ pipeline {
 
                         cd "${TARGET_DIR}"
 
-                        # 1. 커맨드라인 인자(--spring.datasource...) 대신 셸 환경변수(SPRING_DATASOURCE_...)로 주입
-                        # 2. ps aux 출력 시 비밀번호 노출 차단
+                        # PM2에 해당 프로세스가 이미 활성화되어 있는지 검사
+                        if pm2 describe "${APP_NAME}" >/dev/null 2>&1; then
+                            echo "기존 PM2 프로세스 삭제 후 새로 등록합니다..."
+                            pm2 delete "${APP_NAME}"
+                        fi
+
+                        echo "PM2로 Spring Boot 앱을 실행합니다..."
                         SPRING_DATASOURCE_URL="jdbc:mariadb://${DB_HOST}:${DB_PORT}/${DB_NAME}?useSSL=false&serverTimezone=UTC" \
                         SPRING_DATASOURCE_USERNAME="${DB_USER}" \
                         SPRING_DATASOURCE_PASSWORD='${PASS}' \
-                        JENKINS_NODE_COOKIE=dontKillMe \
-                        nohup java -jar "${APP_NAME}.jar" --spring.profiles.active=prod > springboot.log 2>&1 &
+                        pm2 start java \
+                          --name "${APP_NAME}" \
+                          -- -jar "${APP_NAME}.jar" --spring.profiles.active=prod
 
-                        echo \$! > app.pid
-                        echo "신규 프로세스 시작 완료 (PID: \$(cat app.pid))"
+                        pm2 save
                     """
                 }
             }
@@ -149,21 +134,16 @@ pipeline {
         stage('Health Check') {
             steps {
                 sh """
-                    sleep 15
+                    sleep 10
 
-                    PID_FILE="${TARGET_DIR}/app.pid"
-                    LOG_FILE="${TARGET_DIR}/springboot.log"
-
-                    if [ -f "\$PID_FILE" ] && ps -p \$(cat "\$PID_FILE") > /dev/null; then
-                        echo "Spring Boot 정상 동작 확인 (PID: \$(cat \$PID_FILE))"
+                    # PM2 상태 체크 (online 여부 확인)
+                    if pm2 describe "${APP_NAME}" | grep -q "online"; then
+                        echo "Spring Boot가 PM2에서 정상적으로 실행 중입니다 (online)."
+                        pm2 list
                     else
-                        echo "Spring Boot 실행 실패! 최신 로그를 출력합니다:"
+                        echo "Spring Boot 실행 실패! PM2 에러 로그를 출력합니다:"
                         echo "=========================================="
-                        if [ -f "\$LOG_FILE" ]; then
-                            cat "\$LOG_FILE"
-                        else
-                            echo "springboot.log 파일이 존재하지 않습니다."
-                        fi
+                        pm2 logs "${APP_NAME}" --lines 50 --raw
                         echo "=========================================="
                         exit 1
                     fi
